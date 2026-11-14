@@ -1,0 +1,592 @@
+
+#!/bin/bash
+
+# 1. Update packages
+sudo dnf update -y
+
+# 2. Install Apache
+sudo dnf install httpd -y
+
+# 3. Create the website directory
+sudo mkdir -p /var/www/html
+
+# 4. Create a test HTML page
+sudo tee /var/www/html/index.html > /dev/null <<'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes Library</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-soft: #171e26;
+    --card: #1c252f;
+    --card-hover: #24303c;
+    --border: #2a3744;
+    --text: #e8eef5;
+    --muted: #8fa1b3;
+    --accent: #4da3ff;
+    --accent-soft: rgba(77, 163, 255, 0.12);
+    --pdf: #ff5c5c;
+    --doc: #4d7dff;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 15% -10%, #1b2b3d 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header { margin-bottom: 32px; }
+
+  h1 {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin: 0 0 8px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .sub {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0;
+  }
+
+  .search {
+    position: relative;
+    margin: 28px 0 8px;
+    max-width: 420px;
+  }
+
+  .search input {
+    width: 100%;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px 12px 40px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .search input:focus {
+    border-color: var(--accent);
+    background: #1b232d;
+  }
+
+  .search input::placeholder { color: #63748a; }
+
+  .search svg {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    stroke: var(--muted);
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:hover {
+    color: var(--text);
+    border-color: #3b4d60;
+    background: var(--card);
+  }
+
+  .semester { margin-top: 40px; }
+
+  .semester h2 {
+    font-size: 13px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .semester h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .count {
+    font-size: 12px;
+    color: #5d7085;
+    margin: 0 0 16px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s, background 0.15s, border-color 0.15s;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .card:hover {
+    background: var(--card-hover);
+    border-color: #3a4b5e;
+    transform: translateY(-2px);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+  }
+
+  .badge.pdf { color: var(--pdf); background: rgba(255, 92, 92, 0.12); }
+  .badge.doc { color: var(--doc); background: rgba(77, 125, 255, 0.12); }
+
+  .arrow {
+    color: var(--muted);
+    transition: transform 0.15s, color 0.15s;
+  }
+
+  .arrow svg { width: 16px; height: 16px; display: block; }
+
+  .card:hover .arrow {
+    color: var(--accent);
+    transform: translate(2px, -2px);
+  }
+
+  .card h3 {
+    font-size: 15px;
+    line-height: 1.4;
+    font-weight: 600;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card .file {
+    font-size: 11px;
+    color: #5d7085;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: auto;
+  }
+
+  .empty {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 40px 0;
+    text-align: center;
+    display: none;
+  }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: #55677c;
+    font-size: 12px;
+  }
+
+  .viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    background: rgba(8, 12, 17, 0.94);
+    backdrop-filter: blur(6px);
+  }
+
+  .viewer.open { display: flex; }
+
+  .viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .viewer-bar h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    min-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .viewer-bar .btn {
+    padding: 8px 12px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .viewer-bar .close {
+    color: var(--text);
+    background: #2a3744;
+    border-color: #3a4b5e;
+    font-size: 16px;
+    line-height: 1;
+    padding: 8px 11px;
+  }
+
+  .viewer-bar .close:hover { background: #35455a; }
+
+  .viewer-bar .back {
+    color: var(--text);
+    font-weight: 600;
+    background: var(--accent-soft);
+    border-color: rgba(77, 163, 255, 0.35);
+  }
+
+  .viewer-bar .back:hover {
+    background: rgba(77, 163, 255, 0.2);
+    border-color: var(--accent);
+  }
+
+  .viewer-bar .back svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .viewer-body {
+    position: relative;
+    flex: 1;
+    background: #0b0f14;
+  }
+
+  .viewer-body iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #ffffff;
+  }
+
+  .spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border: 3px solid #2a3744;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 520px) {
+    .wrap { padding: 32px 16px 60px; }
+    h1 { font-size: 26px; }
+    .viewer-bar { padding: 10px 12px; }
+    .viewer-bar .btn span { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Notes <span>Library</span></h1>
+      <p class="sub">Course notes and materials. Click any item to preview it right here.</p>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+          <input id="search" type="text" placeholder="Search notes..." autocomplete="off">
+        </div>
+        <button class="btn" id="shuffle">Shuffle</button>
+      </div>
+    </header>
+
+    <main id="content"></main>
+    <p class="empty" id="empty">No notes match your search.</p>
+
+    <footer>Source: bucketfornotes &middot; eu-north-1</footer>
+  </div>
+
+  <div class="viewer" id="viewer" aria-hidden="true">
+    <div class="viewer-bar">
+      <button class="btn back" id="viewer-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"></path>
+        </svg>
+        Back
+      </button>
+      <h4 id="viewer-title"></h4>
+      <a class="btn" id="viewer-tab" href="#" target="_blank" rel="noopener">Open in new tab</a>
+      <a class="btn" id="viewer-download" href="#" download>Download</a>
+      <button class="btn close" id="viewer-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="viewer-body">
+      <div class="spinner" id="viewer-spinner"></div>
+      <iframe id="viewer-frame" title="Document preview" allowfullscreen></iframe>
+    </div>
+  </div>
+
+<script>
+  const URLS = [
+    "https://bucketfornotes.s3.eu-north-1.amazonaws.com/ACCT+110++BL+FOUNDATIONS+OF+ACCOUNTING+-+kabarak+university.pdf",
+    "https://bucketfornotes.s3.eu-north-1.amazonaws.com/1be5312f-a179-4586-8112-12df4feddd7c-BIBL_120_Assignment.docx",
+    "https://bucketfornotes.s3.eu-north-1.amazonaws.com/DCOM+126+DISCRETE+MATHEMATICS+II+-+kabarak+university.docx",
+    "https://bucketfornotes.s3.eu-north-1.amazonaws.com/MATH+113+CALCULUS+I+-+kabarak+university+(1).docx"
+  ];
+
+  const SMALL_WORDS = ["of", "the", "and", "for", "in", "to", "a", "an", "on", "at", "by"];
+
+  function fileName(url) {
+    return decodeURIComponent(url.split("/").pop()).replace(/\+/g, " ");
+  }
+
+  function titleFromUrl(url) {
+    let name = fileName(url).replace(/\.[^.]+$/, "");
+    name = name.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i, "");
+    name = name.replace(/\s*-\s*kabarak\s+university/gi, "");
+    name = name.replace(/\(\d+\)/g, "");
+    name = name.replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+
+    return name.split(" ").map((word, i) => {
+      const lower = word.toLowerCase();
+      if (SMALL_WORDS.includes(lower) && i !== 0) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }).join(" ");
+  }
+
+  function fileType(url) {
+    const ext = (url.match(/\.([a-z0-9]+)(?:\?|$)/i) || [, ""])[1].toLowerCase();
+    return ext === "pdf" ? "pdf" : "doc";
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  const searchInput = document.getElementById("search");
+  const content = document.getElementById("content");
+  const empty = document.getElementById("empty");
+
+  const viewer = document.getElementById("viewer");
+  const frame = document.getElementById("viewer-frame");
+  const spinner = document.getElementById("viewer-spinner");
+  const viewerTitle = document.getElementById("viewer-title");
+  const viewerTab = document.getElementById("viewer-tab");
+  const viewerDownload = document.getElementById("viewer-download");
+
+  function viewerSrc(item) {
+    if (item.type === "pdf") return item.url;
+    return "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(item.url);
+  }
+
+  function openViewer(item) {
+    viewerTitle.textContent = item.title;
+    viewerTab.href = item.url;
+    viewerDownload.href = item.url;
+    spinner.style.display = "block";
+    frame.src = "about:blank";
+    frame.src = viewerSrc(item);
+    viewer.classList.add("open");
+    viewer.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    clearTimeout(openViewer._timer);
+    openViewer._timer = setTimeout(() => { spinner.style.display = "none"; }, 12000);
+
+    if (!(history.state && history.state.viewer)) {
+      history.pushState({ viewer: true }, "");
+    }
+  }
+
+  function closeViewer(goBack) {
+    const wasOpen = viewer.classList.contains("open");
+    viewer.classList.remove("open");
+    viewer.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    frame.src = "about:blank";
+
+    if (wasOpen && goBack !== false && history.state && history.state.viewer) {
+      history.back();
+    }
+  }
+
+  frame.addEventListener("load", () => {
+    if (frame.src && !frame.src.startsWith("about:")) spinner.style.display = "none";
+  });
+
+  document.getElementById("viewer-back").addEventListener("click", () => closeViewer());
+  document.getElementById("viewer-close").addEventListener("click", () => closeViewer());
+  window.addEventListener("popstate", () => closeViewer(false));
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && viewer.classList.contains("open")) closeViewer();
+  });
+
+  function render() {
+    const query = searchInput.value.trim().toLowerCase();
+    const items = shuffle(URLS.map(url => ({
+      url,
+      title: titleFromUrl(url),
+      file: fileName(url),
+      type: fileType(url)
+    })));
+
+    const filtered = items.filter(item =>
+      !query || item.title.toLowerCase().includes(query) || item.file.toLowerCase().includes(query)
+    );
+
+    const half = Math.ceil(filtered.length / 2);
+    const semesters = [
+      { name: "Semester 1", items: filtered.slice(0, half) },
+      { name: "Semester 2", items: filtered.slice(half) }
+    ];
+
+    content.innerHTML = "";
+    empty.style.display = filtered.length ? "none" : "block";
+
+    semesters.forEach(sem => {
+      if (!sem.items.length) return;
+
+      const section = document.createElement("section");
+      section.className = "semester";
+      section.innerHTML = `
+        <h2>${sem.name}</h2>
+        <p class="count">${sem.items.length} item${sem.items.length === 1 ? "" : "s"}</p>
+        <div class="grid"></div>`;
+
+      const grid = section.querySelector(".grid");
+
+      sem.items.forEach(item => {
+        const a = document.createElement("a");
+        a.className = "card";
+        a.href = item.url;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.innerHTML = `
+          <div class="card-top">
+            <span class="badge ${item.type}">${item.type === "pdf" ? "PDF" : "DOCX"}</span>
+            <span class="arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 17L17 7M9 7h8v8"></path>
+              </svg>
+            </span>
+          </div>
+          <h3>${item.title}</h3>
+          <span class="file">${item.file}</span>`;
+        a.addEventListener("click", e => {
+          if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+          e.preventDefault();
+          openViewer(item);
+        });
+        grid.appendChild(a);
+      });
+
+      content.appendChild(section);
+    });
+  }
+
+  searchInput.addEventListener("input", render);
+  document.getElementById("shuffle").addEventListener("click", render);
+  render();
+</script>
+</body>
+</html>
+
+EOF
+
+# 5. Set permissions
+sudo chmod 644 /var/www/html/index.html
+
+# 6. Enable and start Apache
+sudo systemctl enable httpd
+sudo systemctl start httpd
+
+# 7. Check Apache status
+sudo systemctl status httpd --no-pager
